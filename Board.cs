@@ -1,41 +1,86 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace Sudoku
 {
     internal class Board
     {
-        private List<List<int>> board = new List<List<int>>();
-        private List<List<int>> solution = new List<List<int>>();
+        private int[,] board = new int[9,9];
+        private int[,] solution = new int[9,9];
 
         // Constructor
         public Board()
         {
-            for (int i = 0; i < 9; i++)
-            {
-                board.Add(new List<int>());
-                solution.Add(new List<int>());
-            }
             FindSolution();
         }
 
         // Returns whether the board has met the solution
-        public bool Solved() => (board == solution);
+        public bool Solved()
+        {
+            for (int i = 0; i < 9; i++)
+            {
+                for (int j = 0; j < 9; j++)
+                {
+                    if (board[i,j] != solution[i,j])
+                        return false;
+                }
+            }
+            return true;
+        }
+
+        // Inserts the num parameter into the coordinates provided
+        public void PlaceInteger(int num, int row, int column) => board[row,column] = num;
 
         // Return integers between two argument bounds, inclusive
         private int GenerateNum(int lowBound, int highBound)
         {
             Random rand = new Random();
-            return rand.Next(highBound + 1) + lowBound;
+            return rand.Next(lowBound, highBound + 1);
+        }
+        
+        public void Display()
+        {
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.WriteLine("  1 2 3 4 5 6 7 8 9");
+            Console.ResetColor();
+            for (int i = 0; i < 9; i++)
+            {
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.Write(i+1 + " ");
+                Console.ResetColor();
+                for (int j = 0; j < 9; j++)
+                {
+                    if (board[i, j] == 0)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.Write(board[i, j] + " ");
+                        Console.ResetColor();
+                    }
+                    else if (board[i,j] != solution[i,j])
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkYellow;
+                        Console.Write(board[i, j] + " ");
+                        Console.ResetColor();
+                    }
+                    else
+                    {
+                        Console.Write(board[i, j] + " ");
+                    }
+                }
+                Console.WriteLine();
+            }
         }
 
         private void FindSolution()
         {
-            for (int i = 0; i < 9; i += 3)
+            int count = 0;
+            for (int i = 0; count < 3; i += 3)
+            {
                 FillSubBoard(i);
-            Solve(0, 3);
-            solution = board;
-            HideElements():
+                count++;
+            }
+            Solve(0,3);
+            Array.Copy(board, solution, 81);
+            HideElements();
         }
 
         private void FillSubBoard(int corner)
@@ -48,33 +93,33 @@ namespace Sudoku
                     do
                         num = GenerateNum(1, 9);
                     while (!NotInSubBoard(num, corner, corner));
-                    board[corner + i][corner + j] = num;
+                    board[corner + i,corner + j] = num;
                 }
             }
         }
 
-        private bool Solve(int col, int row)
+        private bool Solve(int row, int col)
         {
-            if (row >= 9 && col < 9-1)
+            if (row < 8 && col >= 9)
             {
-                col++;
-                row = 0;
+                row++;
+                col = 0;
             }
             if (row >= 9 && col >= 9)
                 return true;
-            if (col < 3)
+            if (row < 3)
             {
                 if (col < 3)
                     col = 3;
             }
-            else if (col < 9 - Math.Sqrt(9))
+            else if (row < 6)
             {
                 if (col == row / 3 * 3)
                     col += 3;
             }
             else
             {
-                if (col == 9 - Math.Sqrt(9))
+                if (col == 6)
                 {
                     row++;
                     col = 0;
@@ -84,13 +129,13 @@ namespace Sudoku
             for (int i = 1; i <= 9; i++)
             {
                 // If the number does not exist within the confinds of a sub-board, row, or column...
-                if (NotInSubBoard(i, row, col) && NotInRow(i, row) && NotInCol(i, col))
+                if (NotInConflict(i, row, col))
                 {
-                    board[row][col] = i; // Sets position to our number
+                    board[row,col] = i; // Sets position to our number
                     // Checks if we can move onto the next position...
                     if (Solve(row, col + 1))
                         return true;
-                    board[row][col] = 0; // If not, we set to 0 and move on
+                    board[row,col] = 0; // If not, we set to 0 and move on
                 }
             }
             return false;
@@ -102,21 +147,30 @@ namespace Sudoku
         {
             // Defines count of elements to hide
             int count = 48;
-            int xPos;
-            int yPos;
+            int row;
+            int col;
+            int index;
             while (count != 0)
             {
                 // Generating coordinates...
-                xPos = GenerateNum(1, 9);
-                yPos = GenerateNum(1, 9);
+                index = GenerateNum(1, 80);
+                row = index / 9;
+                col = index % 9;
 
                 // Checks if the target is already a zero...
-                if (board[yPos][xPos] != 0)
+                if (board[row,col] != 0)
                 {
                     count--;
-                    board[yPos][xPos] = 0;
+                    board[row,col] = 0;
                 }
             }
+        }
+
+        // PRIVATE BOOL NotInConflict
+        // Returns boolean if the num parameter is safe to place and not in conflict
+        private bool NotInConflict(int num, int row, int col)
+        {
+            return (NotInSubBoard(num, row, col) && NotInRow(num, row) && NotInCol(num, col));
         }
 
         // PRIVATE BOOLEAN NotInSubBoard
@@ -132,7 +186,7 @@ namespace Sudoku
                 for (int j = 0; j < 3; j++)
                 {
                     // If the number belongs anywhere else in the board, returns false
-                    if (board[rowStart + i][colStart + j] == num)
+                    if (board[rowStart + i,colStart + j] == num)
                         return false;
                 }
             } return true;
@@ -144,11 +198,8 @@ namespace Sudoku
         {
             for (int i = 0; i < 9; i++)
             {
-                for (int j = 0; j < 9; j++)
-                {
-                    if (board[i][j] == num)
-                        return false;
-                }
+                if (board[row,i] == num)
+                    return false;
             }
             return true;
         }
@@ -159,7 +210,7 @@ namespace Sudoku
         {
             for (int i = 0; i < 9; i++)
             {
-                if (board[i][col] == num)
+                if (board[i,col] == num)
                     return false;
             }
             return true;
