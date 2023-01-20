@@ -5,7 +5,7 @@ set amount of numbers for the user to find.
 
 ### Console Iteration
 
-Comprised of coloured output and a border to define the rows/columns of the board.
+Produced with coloured output and a border to help define the rows/columns of the board.
 
 ### Desktop Iteration
 
